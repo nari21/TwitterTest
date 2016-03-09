@@ -8,12 +8,11 @@ import android.database.sqlite.SQLiteOpenHelper;
  * Created by k-matsuo on 2016/03/04.
  */
 public class MySQLiteOpenHelper extends SQLiteOpenHelper {
-    static final String DB_NAME = "sqlite_sample.db"; // DB名
-    static final int DB_VERSION = 1; // DBのVersion
+    private static final String DB_NAME = "sqlite_sample.db"; // DB名
+    private static final int DB_VERSION = 1;                 // DBのVersion
 
     // SQL文をStringに保持しておく
-    static String CREATE_TABLE = null;
-    static final String DROP_TABLE = "drop table mytable";
+    private String CREATE_TABLE = null;
 
     // コンストラクタ
     // CREATE用のSQLを取得する

@@ -1,7 +1,6 @@
 package jp.techacademy.android.twittertest;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * Created by k-matsuo on 2016/03/03.
@@ -17,11 +16,10 @@ public class TwitterData {
     // ツイート内容
     public String text;
 
-    public TwitterData(JSONObject jsonObject) throws JSONException {
-
-        user_name = jsonObject.getJSONObject("user").getString("name");
-        profile_image_url = jsonObject.getJSONObject("user").getString("profile_image_url");
-        created_ad = jsonObject.getString("created_at");
-        text = jsonObject.getString("text");
+    public TwitterData(String user_name,String profile_image_url, String created_ad, String text) throws JSONException {
+        this.user_name = user_name;
+        this.profile_image_url = profile_image_url;
+        this.created_ad = created_ad;
+        this.text = text;
     }
 }
