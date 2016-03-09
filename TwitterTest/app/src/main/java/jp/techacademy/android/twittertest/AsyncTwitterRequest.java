@@ -30,7 +30,7 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
     private final String accessTokenUrl = "http://twitter.com/oauth/access_token";
     private final String authorizeUrl = "http://twitter.com/oauth/authorize";
     private final String twitterHomeTimelineUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json";
-    private final String get_count = "count=5";
+    private final String get_count = "?count=20";
 
     @Override
     protected List<TwitterData> doInBackground(String... params) {
@@ -47,7 +47,7 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
 //            String url = provider.retrieveRequestToken(consumer, OAuth.OUT_OF_BAND);
 
             // URLの作成（ホームタイムライン取得）
-            URL url = new URL(twitterHomeTimelineUrl);
+            URL url = new URL(twitterHomeTimelineUrl+get_count);
 
             // 接続用HttpURLConnectionオブジェクト作成
             con = (HttpURLConnection) url.openConnection();
@@ -55,6 +55,8 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
             con.setRequestMethod("GET");
             // リダイレクトを自動で許可しない設定
             con.setInstanceFollowRedirects(false);
+            // タイムアウト設定(5秒)
+            con.setConnectTimeout(5000);
 
             // OAuth認証
             consumer.sign(con);
@@ -70,6 +72,7 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
                 while ((line = br.readLine()) != null) {
                     sb.append(line);
                 }
+                br.close();
 
                 // JSON Arrayを作成する(文字列としてのJSONをJSON Arrayに変換)
                 JSONArray jsonArray = new JSONArray(sb.toString());
@@ -82,7 +85,12 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
 
                     // JSONデータを解析
-                    TwitterData data = new TwitterData(jsonObject);
+                    String user_name = jsonObject.getJSONObject("user").getString("name");
+                    String profile_image_url = jsonObject.getJSONObject("user").getString("profile_image_url");
+                    String created_ad = jsonObject.getString("created_at");
+                    String text = jsonObject.getString("text");
+
+                    TwitterData data = new TwitterData(user_name, profile_image_url, created_ad, text);
                     list.add(data);
                 }
 

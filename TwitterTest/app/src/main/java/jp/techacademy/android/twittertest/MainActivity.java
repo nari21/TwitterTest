@@ -78,39 +78,16 @@ public class MainActivity extends Activity {
 
             @Override
             protected void onPostExecute(List<TwitterData> result) {
-
+                // サーバーからデータを取得できた場合
                 if (result != null) {
+                    // DBにデータを登録
+                    createDb(result);
 
-                    // リストのアイテムを作成
-                    List<CustomListData> listItem = new ArrayList<CustomListData>();
-
-                    for (TwitterData data : result) {
-                        // アイテムの追加
-                        CustomListData itemData = new CustomListData(data.user_name, data.created_ad, data.text, data.profile_image_url);
-                        listItem.add(itemData);
+                    // DBからデータ読み込み
+                    if (!readDb()) {
+                        Toast.makeText(getApplicationContext(), "DBからデータの取得に失敗しました。", Toast.LENGTH_SHORT).show();
                     }
 
-                    listAdapter = new MyListArrayAdapter(getApplicationContext(), 0, listItem, R.layout.custom_list,
-                            R.id.custom_list_user_name, R.id.custom_list_created_ad, R.id.custom_list_text, R.id.custom_list_profile_image);
-                    listView.setAdapter(listAdapter);
-                    listAdapter.notifyDataSetChanged();
-
-                    //DBの作成
-                    MySQLiteOpenHelper hlpr = new MySQLiteOpenHelper(getApplicationContext(), CREATE_TABLE_SQL);
-                    SQLiteDatabase mydb = hlpr.getWritableDatabase();
-
-                    // データを全て削除
-                    mydb.delete(TABLE_NAME, FIELD + " like '%'", null);
-
-                    for (TwitterData data : result) {
-                        // データの追加
-                        ContentValues values = new ContentValues();
-                        values.put(FIELD_USER_NAME, data.user_name);
-                        values.put(FIELD_PROFILE_IMAGE, data.profile_image_url);
-                        values.put(FIELD_TEXT, data.text);
-                        values.put(FIELD_CREATED_AD, data.created_ad);
-                        mydb.insert(TABLE_NAME, null, values);
-                    }
                     Toast.makeText(getApplicationContext(), "タイムラインを取得しました。", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(getApplicationContext(), "タイムラインの取得に失敗しました。", Toast.LENGTH_SHORT).show();
@@ -125,6 +102,7 @@ public class MainActivity extends Activity {
         task.execute();
     }
 
+    // DBからデータを取得しリストビューに設定
     private boolean readDb() {
         boolean result = false;
 
@@ -139,8 +117,6 @@ public class MainActivity extends Activity {
             int num = cursor.getCount();
             // データが１件以上ある場合
             if (num != 0) {
-
-                result = true;
                 // DBからデータを取得し画面を更新する
 
                 // リストのアイテムを作成
@@ -149,7 +125,7 @@ public class MainActivity extends Activity {
                 // カーソルを最後に移動
                 // 最新のデータからリストの先頭にセットしていく
                 cursor.moveToLast();
-                while (cursor.moveToPrevious()) {
+                do {
                     // ツイート内容を取得
                     String user_name = cursor.getString(cursor.getColumnIndex(FIELD_USER_NAME));
                     String profile_image_url = cursor.getString(cursor.getColumnIndex(FIELD_PROFILE_IMAGE));
@@ -159,17 +135,46 @@ public class MainActivity extends Activity {
                     // アイテムの追加
                     CustomListData itemData = new CustomListData(user_name, created_ad, text, profile_image_url);
                     listItem.add(itemData);
-                }
-                listAdapter = new MyListArrayAdapter(getApplicationContext(), 0, listItem, R.layout.custom_list,
-                        R.id.custom_list_user_name, R.id.custom_list_created_ad, R.id.custom_list_text, R.id.custom_list_profile_image);
+                } while (cursor.moveToPrevious());
+                listAdapter = new MyListArrayAdapter(getApplicationContext(), 0, listItem);
                 listView.setAdapter(listAdapter);
                 listAdapter.notifyDataSetChanged();
+
+                result = true;
             }
             cursor.close();
         } finally {
             mydb.close();
         }
 
+        return result;
+    }
+
+    // DBを作成しデータを登録
+    private boolean createDb(List<TwitterData> data) {
+        boolean result = false;
+
+        // DBにデータを登録
+        // DBの作成
+        MySQLiteOpenHelper hlpr = new MySQLiteOpenHelper(getApplicationContext(), CREATE_TABLE_SQL);
+        SQLiteDatabase mydb = hlpr.getWritableDatabase();
+
+        // データを全て削除
+        mydb.delete(TABLE_NAME, FIELD + " like '%'", null);
+
+        for (TwitterData setData : data) {
+            // データの追加
+            ContentValues values = new ContentValues();
+            values.put(FIELD_USER_NAME, setData.user_name);
+            values.put(FIELD_PROFILE_IMAGE, setData.profile_image_url);
+            values.put(FIELD_TEXT, setData.text);
+            values.put(FIELD_CREATED_AD, setData.created_ad);
+            mydb.insert(TABLE_NAME, null, values);
+        }
+
+        mydb.close();
+
+        result = true;
         return result;
     }
 

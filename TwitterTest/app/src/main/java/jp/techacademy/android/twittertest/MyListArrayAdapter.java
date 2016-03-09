@@ -15,60 +15,66 @@ import java.util.List;
  */
 public class MyListArrayAdapter extends ArrayAdapter<CustomListData> {
 
-    private Context context;
     private LayoutInflater inflater;
-    private int listItemLayoutId, user_name, created_ad, text, profile_image;
+    private ViewHolder holder;
 
-    public MyListArrayAdapter(Context context, int resouurce,
-                              List<CustomListData> objects, int listItemLayoutid,
-                              int user_name,int created_ad, int text, int profile_image) {
-        super(context, resouurce, objects);
+    private class ViewHolder {
+        TextView user_name;
+        TextView created_ad;
+        TextView text;
+        ImageView profile_image;
 
-        this.context = context;
+        ViewHolder (View view) {
+            profile_image = (ImageView) view.findViewById(R.id.custom_list_profile_image);
+            user_name = (TextView) view.findViewById(R.id.custom_list_user_name);
+            created_ad = (TextView) view.findViewById(R.id.custom_list_created_ad);
+            text = (TextView) view.findViewById(R.id.custom_list_text);
+        }
+    }
+
+    public MyListArrayAdapter(Context context, int resource,
+                              List<CustomListData> objects){
+        super(context, resource, objects);
+
         inflater = (LayoutInflater) context.getSystemService(context.LAYOUT_INFLATER_SERVICE);
-        this.listItemLayoutId = listItemLayoutid;
-        this.user_name = user_name;
-        this.created_ad = created_ad;
-        this.text = text;
-        this.profile_image = profile_image;
     }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         if (convertView == null) {
-            convertView = inflater.inflate(listItemLayoutId, null);
+            convertView = inflater.inflate(R.layout.custom_list, null);
+
+            holder = new ViewHolder(convertView);
+            convertView.setTag(holder);
+        } else {
+            holder = (ViewHolder)convertView.getTag();
         }
 
         //リストのアイテムデータの取得
         CustomListData item = this.getItem(position);
 
-        TextView user_name = (TextView) convertView.findViewById(this.user_name);
-        if(user_name != null) {
+        if(holder.user_name != null) {
             //アイテムデータにユーザー名を設定
-            user_name.setText(item.getUserName());
+            holder.user_name.setText(item.getUserName());
         }
 
-        TextView created_ad = (TextView) convertView.findViewById(this.created_ad);
-        if (created_ad != null) {
+        if (holder.created_ad != null) {
             //アイテムデータに更新日を設定
-            created_ad.setText(item.getCreatedAd());
+            holder.created_ad.setText(item.getCreatedAd());
         }
 
-        TextView text = (TextView) convertView.findViewById(this.text);
-        if (text != null) {
+        if (holder.text != null) {
             //アイテムデータにツイート内容を設定
-            text.setText(item.getText());
+            holder.text.setText(item.getText());
         }
 
-        ImageView profile_image = (ImageView) convertView.findViewById(this.profile_image);
-        if (profile_image != null) {
+        if (holder.profile_image != null) {
             //タグを設定
-            profile_image.setTag(item.getProfileImage());
+            holder.profile_image.setTag(item.getProfileImage());
             //画像取得スレッド起動
             ImageLoaderTask imageTask = new ImageLoaderTask();
-            imageTask.execute(new ImageLoaderTask.Request(profile_image, item.getProfileImage()));
+            imageTask.execute(imageTask.new Request(holder.profile_image, item.getProfileImage()));
         }
-
         return convertView;
     }
 

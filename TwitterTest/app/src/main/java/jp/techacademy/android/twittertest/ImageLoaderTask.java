@@ -15,9 +15,9 @@ import java.net.URL;
  */
 public class ImageLoaderTask extends AsyncTask<ImageLoaderTask.Request, Void, ImageLoaderTask.Result> {
 
-    private static String tag;
+    private String tag;
 
-    public static class Request {
+    public class Request {
         public final ImageView imageView;
         public final String url;
 
@@ -29,7 +29,7 @@ public class ImageLoaderTask extends AsyncTask<ImageLoaderTask.Request, Void, Im
         }
     }
 
-    public static class Result {
+    public class Result {
         public final ImageView imageView;
         public final Bitmap bitmap;
         public final Exception exception;
