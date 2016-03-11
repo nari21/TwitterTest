@@ -1,6 +1,7 @@
 package jp.techacademy.android.twittertest;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -69,13 +70,22 @@ public class MyListArrayAdapter extends ArrayAdapter<CustomListData> {
         }
 
         if (holder.profile_image != null) {
-            //タグを設定
-            holder.profile_image.setTag(item.getProfileImage());
-            //画像取得スレッド起動
-            ImageLoaderTask imageTask = new ImageLoaderTask();
-            imageTask.execute(imageTask.new Request(holder.profile_image, item.getProfileImage()));
+            ImageCache cache = new ImageCache();
+
+            // キャッシュからBitmapを取得
+            Bitmap image = cache.getImage(item.getProfileImage());
+
+            // キャッシュに画像が存在しない場合はサーバーから取得
+            if (image == null) {
+                //タグを設定
+                holder.profile_image.setTag(item.getProfileImage());
+                //画像取得スレッド起動
+                ImageLoaderTask imageTask = new ImageLoaderTask();
+                imageTask.execute(imageTask.new Request(holder.profile_image, item.getProfileImage()));
+            } else {
+                holder.profile_image.setImageBitmap(image);
+            }
         }
         return convertView;
     }
-
 }
