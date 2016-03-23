@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_alignParentTop="true"
-    android:layout_alignParentLeft="true">
+    android:layout_alignParentLeft="true"
+    android:background="#ffffff">
 
     <ImageView
         android:id="@+id/custom_list_profile_image"
@@ -26,9 +27,20 @@
     <!--/>-->
 
     <TextView
+        android:id="@+id/custom_list_retweet_flg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/custom_list_profile_image"
+        android:text="retweet_flg"
+        android:textSize="15dp"
+        android:textColor="#808080"
+        />
+
+    <TextView
         android:id="@+id/custom_list_user_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_below="@+id/custom_list_retweet_flg"
         android:layout_toRightOf="@+id/custom_list_profile_image"
         android:text="name"
         android:textSize="15dp"

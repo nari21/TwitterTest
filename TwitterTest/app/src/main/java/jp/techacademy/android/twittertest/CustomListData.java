@@ -13,21 +13,24 @@ public class CustomListData {
     private String text;
     // プロフィール画像
     private String profileImage;
+    // リツイートフラグ
+    private String reTweetFlg;
 
-    public CustomListData(String user_name, String created_ad, String text,String profileImage) {
+    public CustomListData(String user_name, String created_ad, String text,String profileImage, String reTweetFlg) {
         this.user_name = user_name;
         this.created_ad = created_ad;
         this.text = text;
         this.profileImage = profileImage;
+        this.reTweetFlg = reTweetFlg;
     }
 
     public String getUserName() { return this.user_name; }
 
     public String getCreatedAd() {return this.created_ad; }
 
-    public String getText() {
-        return this.text;
-    }
+    public String getText() { return this.text; }
 
     public String getProfileImage() { return this.profileImage; }
+
+    public String getReTweetFlg() { return this.reTweetFlg; }
 }

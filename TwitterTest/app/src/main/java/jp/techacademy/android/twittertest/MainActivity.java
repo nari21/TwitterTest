@@ -2,9 +2,14 @@ package jp.techacademy.android.twittertest;
 
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ClickableSpan;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
@@ -13,8 +18,13 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MainActivity extends Activity {
+
+//    private ImageCache imageCache;
 
     private ListView listView;
     private Button update;
@@ -27,8 +37,15 @@ public class MainActivity extends Activity {
     private final String FIELD_CREATED_AD = "created_ad";
     private final String FIELD_USER_NAME = "user_name";
     private final String FIELD_PROFILE_IMAGE = "profile_image_url";
+
+    private final String FIELD_RE_TEXT = "re_text";
+    private final String FIELD_RE_CREATED_AD = "re_created_ad";
+    private final String FIELD_RE_USER_NAME = "re_user_name";
+    private final String FIELD_RE_PROFILE_IMAGE = "re_profile_image_url";
+
     private final String CREATE_TABLE_SQL = "CREATE TABLE " +TABLE_NAME+" ( "+FIELD+" INTEGER PRIMARY KEY AUTOINCREMENT, "
-            +FIELD_USER_NAME+" TEXT NOT NULL ,"+FIELD_PROFILE_IMAGE+" TEXT," +FIELD_CREATED_AD+" TEXT NOT NULL ," + FIELD_TEXT +" TEXT NOT NULL);";
+            +FIELD_USER_NAME+" TEXT NOT NULL ,"+FIELD_PROFILE_IMAGE+" TEXT," +FIELD_CREATED_AD+" TEXT NOT NULL ," + FIELD_TEXT +" TEXT NOT NULL ,"
+            +FIELD_RE_USER_NAME+" TEXT,"+FIELD_RE_PROFILE_IMAGE+" TEXT," +FIELD_RE_CREATED_AD+" TEXT," + FIELD_RE_TEXT +" TEXT"+ ");";
 
     @Override
     protected void onPostResume() {
@@ -54,6 +71,24 @@ public class MainActivity extends Activity {
                 StartTwitterRequest();
             }
         });
+
+//        // キャッシュの設定
+//        final int memClass = ((ActivityManager)getSystemService(Context.ACTIVITY_SERVICE)).getMemoryClass();
+//
+//        // Use 1/8th of the available memory for this memory cache.
+//        final int cacheSize = 1024 * 1024 * memClass / 8;
+//
+//        LruCache memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+//            @Override
+//            protected int sizeOf(String key, Bitmap bitmap) {
+//                // The cache size will be measured in bytes rather than number
+//                // of items.
+//                return bitmap.getByteCount();
+//            }
+//        };
+//
+//        ImageProcessor processor = new ImageProcessor(this, memoryCache);
+
 
         // DBからデータを取得
         boolean result = readDb();
@@ -112,7 +147,8 @@ public class MainActivity extends Activity {
 
         try {
             // 行の検索
-            Cursor cursor = mydb.query(TABLE_NAME, new String[]{FIELD, FIELD_USER_NAME, FIELD_PROFILE_IMAGE, FIELD_CREATED_AD, FIELD_TEXT}, null, null, null, null, "_id DESC");
+            Cursor cursor = mydb.query(TABLE_NAME, new String[]{FIELD, FIELD_USER_NAME, FIELD_PROFILE_IMAGE, FIELD_CREATED_AD, FIELD_TEXT,
+                    FIELD_RE_USER_NAME, FIELD_RE_PROFILE_IMAGE, FIELD_RE_CREATED_AD, FIELD_RE_TEXT}, null, null, null, null, "_id DESC");
 
             int num = cursor.getCount();
             // データが１件以上ある場合
@@ -132,8 +168,21 @@ public class MainActivity extends Activity {
                     String created_ad = cursor.getString(cursor.getColumnIndex(FIELD_CREATED_AD));
                     String text = cursor.getString(cursor.getColumnIndex(FIELD_TEXT));
 
+                    String re_user_name = cursor.getString(cursor.getColumnIndex(FIELD_RE_USER_NAME));
+                    String retweet_flg = "";
+
+                    // リツイート情報が存在する場合
+                    if(re_user_name != null) {
+                        retweet_flg = user_name + "さんがリツイートしました。";
+                        // リツイート情報を表示する
+                        user_name = re_user_name;
+                        profile_image_url = cursor.getString(cursor.getColumnIndex(FIELD_RE_PROFILE_IMAGE));
+                        created_ad = cursor.getString(cursor.getColumnIndex(FIELD_RE_CREATED_AD));
+                        text = cursor.getString(cursor.getColumnIndex(FIELD_RE_TEXT));
+                    }
+
                     // アイテムの追加
-                    CustomListData itemData = new CustomListData(user_name, created_ad, text, profile_image_url);
+                    CustomListData itemData = new CustomListData(user_name, created_ad, text, profile_image_url, retweet_flg);
                     listItem.add(itemData);
                 } while (cursor.moveToPrevious());
                 listAdapter = new MyListArrayAdapter(getApplicationContext(), 0, listItem);
@@ -169,6 +218,15 @@ public class MainActivity extends Activity {
             values.put(FIELD_PROFILE_IMAGE, setData.profile_image_url);
             values.put(FIELD_TEXT, setData.text);
             values.put(FIELD_CREATED_AD, setData.created_ad);
+
+            // リツイート情報が存在する場合
+            if(setData.retweet != null) {
+                values.put(FIELD_RE_USER_NAME, setData.retweet.user_name);
+                values.put(FIELD_RE_PROFILE_IMAGE, setData.retweet.profile_image_url);
+                values.put(FIELD_RE_TEXT, setData.retweet.text);
+                values.put(FIELD_RE_CREATED_AD, setData.retweet.created_ad);
+            }
+
             mydb.insert(TABLE_NAME, null, values);
         }
 
@@ -176,6 +234,76 @@ public class MainActivity extends Activity {
 
         result = true;
         return result;
+    }
+
+
+//    public class ImageProcessor {
+//        public ImageProcessor(Context context, LruCache<String, Bitmap> memoryCache) {
+//            // Memory Cache
+//            mMemoryCache = memoryCache;
+//        }
+//
+//        private LruCache<String, Bitmap> mMemoryCache;
+//
+//        public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+//            if (getBitmapFromMemCache(key) == null) {
+//                mMemoryCache.put(key, bitmap);
+//            }
+//        }
+//
+//        public Bitmap getBitmapFromMemCache(String key) {
+//            return mMemoryCache.get(key);
+//        }
+//
+//        public void loadBitmap(Context context, String filePath, ImageView imageView, Bitmap loadingBitmap) {
+//
+//            // キャッシュにあるかチェック
+//            final Bitmap bitmap = getBitmapFromMemCache(filePath);
+//
+//            if (bitmap != null) {
+//                imageView.setImageBitmap(bitmap);
+//
+//            } else {
+//                //画像取得スレッド起動
+//                ImageLoaderTask imageTask = new ImageLoaderTask();
+//                imageTask.execute(imageTask.new Request(holder.profile_image, item.getProfileImage()));
+//                }
+//            }
+//        }
+//
+//
+//    }
+
+    public SpannableString createSpannableString(String message, Map<String, String> map) {
+
+        SpannableString ss = new SpannableString(message);
+
+        for (final Map.Entry<String, String> entry : map.entrySet()) {
+            int start = 0;
+            int end = 0;
+
+            // リンク化対象の文字列の start, end を算出する
+            Pattern pattern = Pattern.compile(entry.getKey());
+            Matcher matcher = pattern.matcher(message);
+            while (matcher.find()) {
+                start = matcher.start();
+                end = matcher.end();
+                break;
+            }
+
+            // SpannableString にクリックイベント、パラメータをセットする
+            ss.setSpan(new ClickableSpan() {
+                @Override
+                public void onClick(View textView) {
+                    String url = entry.getValue();
+                    Uri uri = Uri.parse(url);
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    startActivity(intent);
+                }
+            }, start, end, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        }
+
+        return ss;
     }
 
 }

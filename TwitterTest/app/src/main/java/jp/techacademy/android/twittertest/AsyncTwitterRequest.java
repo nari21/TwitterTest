@@ -3,6 +3,7 @@ package jp.techacademy.android.twittertest;
 import android.os.AsyncTask;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -90,7 +91,23 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
                     String created_ad = jsonObject.getString("created_at");
                     String text = jsonObject.getString("text");
 
+                    // ツイート情報を保持
                     TwitterData data = new TwitterData(user_name, profile_image_url, created_ad, text);
+
+                    try {
+                        // JSONデータを解析(リツイート情報)
+                        JSONObject retweet = jsonObject.getJSONObject("retweeted_status");
+                        String re_user_name = retweet.getJSONObject("user").getString("name");
+                        String re_profile_image_url = retweet.getJSONObject("user").getString("profile_image_url");
+                        String re_created_ad = retweet.getString("created_at");
+                        String re_text = retweet.getString("text");
+
+                        // リツイート情報を保持
+                        data.setRetweetInfo(re_user_name, re_profile_image_url, re_created_ad, re_text);
+                    } catch (JSONException e) {
+                        // NOP
+                    }
+
                     list.add(data);
                 }
 
