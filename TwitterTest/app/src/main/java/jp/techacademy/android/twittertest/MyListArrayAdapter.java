@@ -86,10 +86,10 @@ public class MyListArrayAdapter extends ArrayAdapter<CustomListData> {
         }
 
         if (holder.profile_image != null) {
-            ImageCache cache = new ImageCache();
-
+//            ImageCache cache = new ImageCache();
+//            Bitmap image = cache.getImage(item.getProfileImage());
             // キャッシュからBitmapを取得
-            Bitmap image = cache.getImage(item.getProfileImage());
+            Bitmap image = BitmapCache.getBitmap(item.getProfileImage());
 
             // キャッシュに画像が存在しない場合はサーバーから取得
             if (image == null) {
@@ -99,6 +99,7 @@ public class MyListArrayAdapter extends ArrayAdapter<CustomListData> {
                 ImageLoaderTask imageTask = new ImageLoaderTask();
                 imageTask.execute(imageTask.new Request(holder.profile_image, item.getProfileImage()));
             } else {
+                Log.d("debug", "cache hit!");
                 holder.profile_image.setImageBitmap(image);
             }
         }

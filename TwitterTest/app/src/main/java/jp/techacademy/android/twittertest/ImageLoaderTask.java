@@ -83,11 +83,14 @@ public class ImageLoaderTask extends AsyncTask<ImageLoaderTask.Request, Void, Im
         if ((result.bitmap != null) && tag.equals(result.imageView.getTag())) {
             result.imageView.setImageBitmap(result.bitmap);
 
-            ImageCache cache = new ImageCache();
-            Bitmap bitmap_tmp = cache.getImage(tag);
+//            ImageCache cache = new ImageCache();
+//            Bitmap bitmap_tmp = cache.getImage(tag);
+            Bitmap bitmap_tmp = BitmapCache.getBitmap(tag);
+
             // キャッシュに存在しない場合は登録する
             if(bitmap_tmp == null) {
-                cache.setImage(tag, result.bitmap);
+//                cache.setImage(tag, result.bitmap);
+                BitmapCache.putBitmap(tag, result.bitmap);
             }
         }
     }

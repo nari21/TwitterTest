@@ -1,15 +1,17 @@
 package jp.techacademy.android.twittertest;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.ClickableSpan;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
@@ -17,19 +19,26 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import oauth.signpost.OAuthConsumer;
+import oauth.signpost.OAuthProvider;
+import oauth.signpost.basic.DefaultOAuthConsumer;
+import oauth.signpost.basic.DefaultOAuthProvider;
+import oauth.signpost.exception.OAuthCommunicationException;
+import oauth.signpost.exception.OAuthExpectationFailedException;
+import oauth.signpost.exception.OAuthMessageSignerException;
+import oauth.signpost.exception.OAuthNotAuthorizedException;
 
 public class MainActivity extends Activity {
-
-//    private ImageCache imageCache;
 
     private ListView listView;
     private Button update;
     private MyListArrayAdapter listAdapter = null;
     private ProgressBar progress;
+    private ProgressDialog progressDialog;
 
     private final String TABLE_NAME = "sample_table";
     private final String FIELD = "_id";
@@ -47,6 +56,15 @@ public class MainActivity extends Activity {
             +FIELD_USER_NAME+" TEXT NOT NULL ,"+FIELD_PROFILE_IMAGE+" TEXT," +FIELD_CREATED_AD+" TEXT NOT NULL ," + FIELD_TEXT +" TEXT NOT NULL ,"
             +FIELD_RE_USER_NAME+" TEXT,"+FIELD_RE_PROFILE_IMAGE+" TEXT," +FIELD_RE_CREATED_AD+" TEXT," + FIELD_RE_TEXT +" TEXT"+ ");";
 
+    private final String CONSUMER_KEY = "uJqR5qQ3gQmBcKmaRQP7eh9rp";
+    private final String CONSUMER_SECRET = "efGTeiCtUvKz2gFtd6RzY0IVyoKtkuoE6yuNvbSnXc0nunr3j5";
+    private final String REQUEST_TOKEN_URL = "https://twitter.com/oauth/request_token";
+    private final String ACCESS_TOKEN_URL = "https://twitter.com/oauth/access_token";
+    private final String AUTHORIZE_URL = "https://twitter.com/oauth/authorize";
+    private final String CALLBACK = "myapp://callback/";
+    private OAuthConsumer mConsumer;
+    private OAuthProvider mProvider;
+
     @Override
     protected void onPostResume() {
         super.onPostResume();
@@ -61,54 +79,50 @@ public class MainActivity extends Activity {
         listView = (ListView) findViewById(R.id.ListView);
         update = (Button) findViewById(R.id.Button1);
         progress = (ProgressBar) findViewById(R.id.progress);
-
         progress.setVisibility(View.GONE);
+
+        // キャッシュの初期化
+        new BitmapCache();
 
         update.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Twitterタイムラインを再取得する
-                StartTwitterRequest();
+                RequestTwitter();
             }
         });
-
-//        // キャッシュの設定
-//        final int memClass = ((ActivityManager)getSystemService(Context.ACTIVITY_SERVICE)).getMemoryClass();
-//
-//        // Use 1/8th of the available memory for this memory cache.
-//        final int cacheSize = 1024 * 1024 * memClass / 8;
-//
-//        LruCache memoryCache = new LruCache<String, Bitmap>(cacheSize) {
-//            @Override
-//            protected int sizeOf(String key, Bitmap bitmap) {
-//                // The cache size will be measured in bytes rather than number
-//                // of items.
-//                return bitmap.getByteCount();
-//            }
-//        };
-//
-//        ImageProcessor processor = new ImageProcessor(this, memoryCache);
-
 
         // DBからデータを取得
         boolean result = readDb();
         // DBからデータを取得できなかった場合はHTTP通信で取得する
         if(!result) {
-            //Twitterからタイムライン取得
-            StartTwitterRequest();
+            RequestTwitter();
         }
-
     }
 
-    private void StartTwitterRequest() {
+    private void RequestTwitter() {
+        // トークン読み込み
+        SharedPreferences data = getSharedPreferences("Token", Context.MODE_PRIVATE);
+        String token = data.getString("token", "");
+        String token_secret = data.getString("token_secret", "");
+
+        // トークン未取得の場合
+        if(token.isEmpty() || token_secret.isEmpty()) {
+            // OAuth認証
+            OAuthRequestAsyncTask oAuthRequestAsyncTask = new OAuthRequestAsyncTask();
+            oAuthRequestAsyncTask.execute();
+        }
+        // トークン取得済みの場合
+        else {
+            // Twitterタイムラインを再取得する
+            StartTwitterRequest(token, token_secret);
+        }
+    }
+
+    private void StartTwitterRequest(String token, String token_secret) {
         AsyncTwitterRequest task = new AsyncTwitterRequest() {
             @Override
             protected void onPreExecute() {
-                super.onPreExecute();
-                // プログレスバー表示
-                progress.setVisibility(View.VISIBLE);
-                // 更新ボタンをトーンダウン
-                update.setEnabled(false);
+                dispProgress();
             }
 
             @Override
@@ -128,13 +142,14 @@ public class MainActivity extends Activity {
                     Toast.makeText(getApplicationContext(), "タイムラインの取得に失敗しました。", Toast.LENGTH_SHORT).show();
                 }
                 // プログレスバー非表示
-                progress.setVisibility(View.GONE);
-                // 更新ボタンをトーンアップ
-                update.setEnabled(true);
+                hideProgress();
             }
         };
 
-        task.execute();
+        Map<String,String> map = new HashMap<>();
+        map.put("token", token);
+        map.put("token_secret", token_secret);
+        task.execute(map);
     }
 
     // DBからデータを取得しリストビューに設定
@@ -236,74 +251,104 @@ public class MainActivity extends Activity {
         return result;
     }
 
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
 
-//    public class ImageProcessor {
-//        public ImageProcessor(Context context, LruCache<String, Bitmap> memoryCache) {
-//            // Memory Cache
-//            mMemoryCache = memoryCache;
-//        }
-//
-//        private LruCache<String, Bitmap> mMemoryCache;
-//
-//        public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
-//            if (getBitmapFromMemCache(key) == null) {
-//                mMemoryCache.put(key, bitmap);
-//            }
-//        }
-//
-//        public Bitmap getBitmapFromMemCache(String key) {
-//            return mMemoryCache.get(key);
-//        }
-//
-//        public void loadBitmap(Context context, String filePath, ImageView imageView, Bitmap loadingBitmap) {
-//
-//            // キャッシュにあるかチェック
-//            final Bitmap bitmap = getBitmapFromMemCache(filePath);
-//
-//            if (bitmap != null) {
-//                imageView.setImageBitmap(bitmap);
-//
-//            } else {
-//                //画像取得スレッド起動
-//                ImageLoaderTask imageTask = new ImageLoaderTask();
-//                imageTask.execute(imageTask.new Request(holder.profile_image, item.getProfileImage()));
-//                }
-//            }
-//        }
-//
-//
-//    }
+        // プログレスバー非表示
+        hideProgress();
 
-    public SpannableString createSpannableString(String message, Map<String, String> map) {
-
-        SpannableString ss = new SpannableString(message);
-
-        for (final Map.Entry<String, String> entry : map.entrySet()) {
-            int start = 0;
-            int end = 0;
-
-            // リンク化対象の文字列の start, end を算出する
-            Pattern pattern = Pattern.compile(entry.getKey());
-            Matcher matcher = pattern.matcher(message);
-            while (matcher.find()) {
-                start = matcher.start();
-                end = matcher.end();
-                break;
-            }
-
-            // SpannableString にクリックイベント、パラメータをセットする
-            ss.setSpan(new ClickableSpan() {
-                @Override
-                public void onClick(View textView) {
-                    String url = entry.getValue();
-                    Uri uri = Uri.parse(url);
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    startActivity(intent);
-                }
-            }, start, end, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        Uri uri = intent.getData();
+        // ブラウザ認証からのコールバック処理
+        if (uri != null && uri.toString().startsWith(CALLBACK)) {
+            // アクセストークン取得およびリクエスト処理
+            OAuthAccessAsyncTask oAuthAccessAsyncTask = new OAuthAccessAsyncTask();
+            oAuthAccessAsyncTask.execute(uri);
         }
-
-        return ss;
     }
 
+    public class OAuthRequestAsyncTask extends AsyncTask<Void, Void, Void> {
+        @Override
+        protected void onPreExecute() {
+//            dispProgress();
+        }
+
+        @Override
+        protected Void doInBackground(Void...arg0) {
+            // Oauth認証
+            try {
+//                mConsumer = new CommonsHttpOAuthConsumer(CONSUMER_KEY, CONSUMER_SECRET);
+//                mProvider = new CommonsHttpOAuthProvider(REQUEST_TOKEN_URL, ACCESS_TOKEN_URL, AUTHORIZE_URL);
+                mConsumer = new DefaultOAuthConsumer(CONSUMER_KEY, CONSUMER_SECRET);
+                mProvider = new DefaultOAuthProvider(REQUEST_TOKEN_URL, ACCESS_TOKEN_URL, AUTHORIZE_URL);
+                String authUrl = mProvider.retrieveRequestToken(mConsumer, CALLBACK);
+                // ブラウザに認証ページを開かせる
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(authUrl)));
+            } catch (OAuthMessageSignerException e) {
+                e.printStackTrace();
+            } catch (OAuthNotAuthorizedException e) {
+                e.printStackTrace();
+            } catch (OAuthExpectationFailedException e) {
+                e.printStackTrace();
+            } catch (OAuthCommunicationException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    private class OAuthAccessAsyncTask extends AsyncTask<Uri, Void, Void> {
+        @Override
+        protected Void doInBackground(Uri...uris) {
+            Uri uri = uris[0];
+            final String oauthVerifier = uri.getQueryParameter(oauth.signpost.OAuth.OAUTH_VERIFIER);
+            try {
+                // AccessToken取得
+                mProvider.retrieveAccessToken(mConsumer, oauthVerifier);
+                Log.d("debug", "ACCESS_TOKEN : " + mConsumer.getToken());
+                Log.d("debug", "ACCESS_TOKEN_SECRET : " + mConsumer.getTokenSecret());
+
+                // 取得したトークンを保存
+                SharedPreferences data = getSharedPreferences("Token", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = data.edit();
+                editor.putString("token", mConsumer.getToken());
+                editor.putString("token_secret", mConsumer.getTokenSecret());
+                editor.apply();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            // トークン読み込み
+            SharedPreferences data = getSharedPreferences("Token", Context.MODE_PRIVATE);
+            String token = data.getString("token", "");
+            String token_secret = data.getString("token_secret", "");
+
+            // Twitterタイムラインを取得する
+            StartTwitterRequest(token, token_secret);
+        }
+    }
+
+    private void dispProgress() {
+//        // プログレスバー表示
+//        progress.setVisibility(View.VISIBLE);
+//        // 更新ボタンをトーンダウン
+//        update.setEnabled(false);
+
+        progressDialog = ProgressDialog.show( this, "Please wait", "Loading data...");
+    }
+
+    private void hideProgress() {
+//        // プログレスバー非表示
+//        progress.setVisibility(View.GONE);
+//        // 更新ボタンをトーンアップ
+//        update.setEnabled(true);
+        if(progressDialog != null) {
+            progressDialog.dismiss();
+            progressDialog = null;
+        }
+    }
 }

@@ -13,6 +13,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import oauth.signpost.OAuthConsumer;
 import oauth.signpost.basic.DefaultOAuthConsumer;
@@ -20,36 +21,31 @@ import oauth.signpost.basic.DefaultOAuthConsumer;
 /**
  * Created by k-matsuo on 2016/03/03.
  */
-public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<TwitterData>> {
+public class AsyncTwitterRequest extends AsyncTask<Map<String,String>, Integer, List<TwitterData>> {
 
     private final String consumerKey = "uJqR5qQ3gQmBcKmaRQP7eh9rp";
     private final String consumerSecret = "efGTeiCtUvKz2gFtd6RzY0IVyoKtkuoE6yuNvbSnXc0nunr3j5";
-    private final String accessToken = "251482985-bucKvb2iEEvbSXjnz9hQJHOLy8gM6E8Nvh9AQjXs";
-    private final String tokenSecret = "ApvRHODV9mgtUAherbz1biobYe1i3ju2LSbaC4MZMF0Lg";
+//    private final String accessToken = "251482985-bucKvb2iEEvbSXjnz9hQJHOLy8gM6E8Nvh9AQjXs";
+//    private final String tokenSecret = "ApvRHODV9mgtUAherbz1biobYe1i3ju2LSbaC4MZMF0Lg";
 
-    private final String requestTokenUrl = "http://twitter.com/oauth/request_token";
-    private final String accessTokenUrl = "http://twitter.com/oauth/access_token";
-    private final String authorizeUrl = "http://twitter.com/oauth/authorize";
     private final String twitterHomeTimelineUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json";
-    private final String get_count = "?count=20";
+    private final String get_count = "?count=50";
 
     @Override
-    protected List<TwitterData> doInBackground(String... params) {
+    protected List<TwitterData> doInBackground(Map<String,String>... params) {
         HttpURLConnection con = null;
 
         try {
             // これはユーザによらない
             OAuthConsumer consumer = new DefaultOAuthConsumer(consumerKey, consumerSecret);
 
+            String accessToken = params[0].get("token");
+            String tokenSecret = params[0].get("token_secret");
             // これはユーザごとに異なる
             consumer.setTokenWithSecret(accessToken, tokenSecret);
 
-//            OAuthProvider provider = new DefaultOAuthProvider(requestTokenUrl, accessTokenUrl, authorizeUrl);
-//            String url = provider.retrieveRequestToken(consumer, OAuth.OUT_OF_BAND);
-
             // URLの作成（ホームタイムライン取得）
-            URL url = new URL(twitterHomeTimelineUrl+get_count);
-
+            URL url = new URL(twitterHomeTimelineUrl + get_count);
             // 接続用HttpURLConnectionオブジェクト作成
             con = (HttpURLConnection) url.openConnection();
             // リクエストメソッドの設定
@@ -58,7 +54,6 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
             con.setInstanceFollowRedirects(false);
             // タイムアウト設定(5秒)
             con.setConnectTimeout(5000);
-
             // OAuth認証
             consumer.sign(con);
 
@@ -125,4 +120,5 @@ public class AsyncTwitterRequest extends AsyncTask<String, Integer, List<Twitter
 
         return null;
     }
+
 }

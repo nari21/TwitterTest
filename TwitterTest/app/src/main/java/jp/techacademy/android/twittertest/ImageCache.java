@@ -14,7 +14,6 @@ public class ImageCache {
     public static Bitmap getImage(String key) {
         if (cache.containsKey(key)) {
             Log.d("debug", "ImageCache getImage key="+key+" cache hit!");
-//            Log.d(“cache”, “cache hit!”);
             return cache.get(key);
         }
         return null;
